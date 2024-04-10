@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import sys
+import sqlite3
 from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -10,6 +11,12 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import Message
 from config import TOKEN
+
+#Connect to DB
+conn = sqlite3.connect("tasks.db")
+c = conn.cursor()
+c.execute('''CREATE TABLE IF NOT EXISTS tasks
+(user_id INTEGER, task_text TEXT)''')
 
 dp = Dispatcher()
 user_tasks = {}  #Словарь для задач пользователей
@@ -24,6 +31,16 @@ HELP_COMMAND = """
 /deleteAll - удалить все задачи
 """
 storage = MemoryStorage()
+
+
+def add_task(user_id, task_text):
+    c.execute("INSERT INTO tasks (user_id, task_text) VALUES (?, ?)", (user_id, task_text))
+    conn.commit()
+
+
+async def fetch_tasks(user_id):
+    c.execute("SELECT task_text FROM tasks WHERE user_id = ?", (user_id,))
+    return c.fetchall()
 
 
 class TaskStates(StatesGroup):
@@ -51,7 +68,7 @@ async def new_task_command(message: Message, state=FSMContext) -> None:
 @dp.message(StateFilter(TaskStates.newTask))
 async def process_task(message: Message, state: FSMContext) -> None:
     task_text = message.text
-    user_tasks[message.from_user.id] = task_text
+    add_task(message.from_user.id, task_text)
     await message.answer(f"Задачи '{task_text}' успешно записана ;)")
     await state.clear()
 
@@ -59,9 +76,10 @@ async def process_task(message: Message, state: FSMContext) -> None:
 @dp.message(Command(commands=["allTasks"]))
 async def get_tasks(message: Message) -> None:
     user_id = message.from_user.id
-    task = user_tasks.get(user_id)
-    if task:
-        await message.answer("Твои задачи :" + task)
+    tasks = await fetch_tasks(user_id)
+    if tasks:
+        task_texts = [task[0] for task in tasks]
+        await message.answer("Твои задачи : " + "\n".join(task_texts))
     else:
         await message.answer("На данный момент у вас нет добавленных задач")
 
