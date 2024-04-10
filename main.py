@@ -32,11 +32,11 @@ HELP_COMMAND = """
 """
 storage = MemoryStorage()
 
-request_notifications_button = KeyboardButton(text='Разрешить уведомления')
-help_button = KeyboardButton(text='Помощь')
-allTask = KeyboardButton(text='Показать задачи')
-addTask = KeyboardButton(text='Добавить задачу')
-deleteAll = KeyboardButton(text='Удалить всё')
+request_notifications_button = KeyboardButton(text='🔔Разрешить уведомления🔔')
+help_button = KeyboardButton(text='❓Помощь❓')
+allTask = KeyboardButton(text='📂Показать задачи📂')
+addTask = KeyboardButton(text='✅Добавить задачу✅')
+deleteAll = KeyboardButton(text='🗑Удалить всё🗑')
 keyboard = ReplyKeyboardMarkup(keyboard=[
     [request_notifications_button,addTask,deleteAll],
     [help_button,allTask]
@@ -64,18 +64,18 @@ async def command_start_handler(message: Message) -> None:
     await message.answer("Привет! Нажми на кнопку ниже, чтобы разрешить уведомления.", reply_markup=keyboard)
 
 
-@dp.message(lambda message: message.text == 'Разрешить уведомления')
+@dp.message(lambda message: message.text == '🔔Разрешить уведомления🔔')
 async def allow_notification(message: Message) -> None:
     await message.answer("Запрос на включение уведомлений отправлен.")
 
 
-@dp.message(lambda message: message.text == 'Помощь')
+@dp.message(lambda message: message.text == '❓Помощь❓')
 async def help_command(message: Message) -> None:
     await message.reply(text=HELP_COMMAND)
     await message.delete()
 
 
-@dp.message(lambda message: message.text == 'Добавить задачу')
+@dp.message(lambda message: message.text == '✅Добавить задачу✅')
 async def new_task_command(message: Message, state=FSMContext) -> None:
     await message.answer("Хорошо, запиши и отправь мне, то что нужно запомнить :)")
     await state.set_state(TaskStates.newTask)
@@ -89,7 +89,7 @@ async def process_task(message: Message, state: FSMContext) -> None:
     await state.clear()
 
 
-@dp.message(lambda message: message.text == 'Показать задачи')
+@dp.message(lambda message: message.text == '📂Показать задачи📂')
 async def get_tasks(message: Message) -> None:
     user_id = message.from_user.id
     tasks = await fetch_tasks(user_id)
@@ -100,7 +100,7 @@ async def get_tasks(message: Message) -> None:
         await message.answer("На данный момент у вас нет добавленных задач")
 
 
-@dp.message(lambda message: message.text == 'Удалить всё')
+@dp.message(lambda message: message.text == '🗑Удалить всё🗑')
 async def delete_all_tasks(message: Message) -> None:
     user_id = message.from_user.id
     c.execute("DELETE FROM tasks WHERE user_id = ?", (user_id,))
