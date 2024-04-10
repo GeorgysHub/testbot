@@ -84,6 +84,12 @@ async def get_tasks(message: Message) -> None:
         await message.answer("На данный момент у вас нет добавленных задач")
 
 
+@dp.message(Command(commands=["deleteAll"]))
+async def delete_all_tasks(message: Message) -> None:
+    user_id = message.from_user.id
+    c.execute("DELETE FROM tasks WHERE user_id = ?", (user_id,))
+
+
 async def main() -> None:
     # Initialize Bot instance with default bot properties which will be passed to all API calls
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
