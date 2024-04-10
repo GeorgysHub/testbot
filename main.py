@@ -9,7 +9,7 @@ from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from config import TOKEN
 
 #Connect to DB
@@ -32,6 +32,17 @@ HELP_COMMAND = """
 """
 storage = MemoryStorage()
 
+request_notifications_button = KeyboardButton(text='Разрешить уведомления')
+help_button = KeyboardButton(text='Помощь')
+allTask = KeyboardButton(text='Показать задачи')
+addTask = KeyboardButton(text='Добавить задачу')
+deleteAll = KeyboardButton(text='Удалить всё')
+keyboard = ReplyKeyboardMarkup(keyboard=[
+    [request_notifications_button,addTask,deleteAll],
+    [help_button,allTask]
+    ],
+    resize_keyboard=True)
+
 
 def add_task(user_id, task_text):
     c.execute("INSERT INTO tasks (user_id, task_text) VALUES (?, ?)", (user_id, task_text))
@@ -50,16 +61,21 @@ class TaskStates(StatesGroup):
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
-    await message.delete()
+    await message.answer("Привет! Нажми на кнопку ниже, чтобы разрешить уведомления.", reply_markup=keyboard)
 
 
-@dp.message(Command(commands=["help"]))
+@dp.message(lambda message: message.text == 'Разрешить уведомления')
+async def allow_notification(message: Message) -> None:
+    await message.answer("Запрос на включение уведомлений отправлен.")
+
+
+@dp.message(lambda message: message.text == 'Помощь')
 async def help_command(message: Message) -> None:
     await message.reply(text=HELP_COMMAND)
     await message.delete()
 
 
-@dp.message(Command(commands=["newTask"]))
+@dp.message(lambda message: message.text == 'Добавить задачу')
 async def new_task_command(message: Message, state=FSMContext) -> None:
     await message.answer("Хорошо, запиши и отправь мне, то что нужно запомнить :)")
     await state.set_state(TaskStates.newTask)
@@ -73,7 +89,7 @@ async def process_task(message: Message, state: FSMContext) -> None:
     await state.clear()
 
 
-@dp.message(Command(commands=["allTasks"]))
+@dp.message(lambda message: message.text == 'Показать задачи')
 async def get_tasks(message: Message) -> None:
     user_id = message.from_user.id
     tasks = await fetch_tasks(user_id)
@@ -84,7 +100,7 @@ async def get_tasks(message: Message) -> None:
         await message.answer("На данный момент у вас нет добавленных задач")
 
 
-@dp.message(Command(commands=["deleteAll"]))
+@dp.message(lambda message: message.text == 'Удалить всё')
 async def delete_all_tasks(message: Message) -> None:
     user_id = message.from_user.id
     c.execute("DELETE FROM tasks WHERE user_id = ?", (user_id,))
