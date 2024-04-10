@@ -72,7 +72,6 @@ async def allow_notification(message: Message) -> None:
 @dp.message(lambda message: message.text == '❓Помощь❓')
 async def help_command(message: Message) -> None:
     await message.reply(text=HELP_COMMAND)
-    await message.delete()
 
 
 @dp.message(lambda message: message.text == '✅Добавить задачу✅')
@@ -94,8 +93,8 @@ async def get_tasks(message: Message) -> None:
     user_id = message.from_user.id
     tasks = await fetch_tasks(user_id)
     if tasks:
-        task_texts = [task[0] for task in tasks]
-        await message.answer("Твои задачи : " + "\n".join(task_texts))
+        task_texts = [f"{index+1}. {task[0]}" for index, task in enumerate(tasks)]
+        await message.answer("Твои задачи :\n"+"\n".join(task_texts))
     else:
         await message.answer("На данный момент у вас нет добавленных задач")
 
