@@ -37,10 +37,11 @@ help_button = KeyboardButton(text='❓Помощь❓')
 allTask = KeyboardButton(text='📂Показать задачи📂')
 addTask = KeyboardButton(text='✅Добавить задачу✅')
 deleteAll = KeyboardButton(text='🗑Удалить всё🗑')
+deleteTask = KeyboardButton(text='❌Удалить задачу❌')
 keyboard = ReplyKeyboardMarkup(keyboard=[
-    [request_notifications_button,addTask,deleteAll],
-    [help_button,allTask]
-    ],
+    [request_notifications_button, addTask, deleteAll],
+    [help_button, allTask, deleteTask]
+],
     resize_keyboard=True)
 
 
@@ -56,6 +57,7 @@ async def fetch_tasks(user_id):
 
 class TaskStates(StatesGroup):
     newTask = State()
+    waitingForDelete = State()
 
 
 @dp.message(CommandStart())
@@ -93,8 +95,8 @@ async def get_tasks(message: Message) -> None:
     user_id = message.from_user.id
     tasks = await fetch_tasks(user_id)
     if tasks:
-        task_texts = [f"{index+1}. {task[0]}" for index, task in enumerate(tasks)]
-        await message.answer("Твои задачи :\n"+"\n".join(task_texts))
+        task_texts = [f"{index + 1}. {task[0]}" for index, task in enumerate(tasks)]
+        await message.answer("Твои задачи :\n" + "\n".join(task_texts))
     else:
         await message.answer("На данный момент у вас нет добавленных задач")
 
@@ -103,6 +105,31 @@ async def get_tasks(message: Message) -> None:
 async def delete_all_tasks(message: Message) -> None:
     user_id = message.from_user.id
     c.execute("DELETE FROM tasks WHERE user_id = ?", (user_id,))
+    conn.commit()
+    await message.answer("Все задачи успешно удалены")
+
+
+@dp.message(lambda message: message.text == '❌Удалить задачу❌')
+async def delete_task(message: Message, state: FSMContext) -> None:
+    await message.answer("Выберите номер задачи, которую вы хотите убрать")
+    await state.set_state(TaskStates.waitingForDelete)
+
+
+@dp.message(StateFilter(TaskStates.waitingForDelete))
+async def process_task_to_delete(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    task_number = message.text
+    tasks = await fetch_tasks(user_id)
+    if task_number.isdigit() and 1 <= int(task_number) <= len(tasks):
+        task_index = int(task_number) - 1
+        task_to_delete = tasks[task_index][0]
+        with conn:
+            c.execute("DELETE FROM tasks WHERE user_id = ? AND task_text = ?", (user_id, task_to_delete))
+            conn.commit()
+        await message.answer(f"Задача '{task_to_delete}' успешно удалена.")
+    else:
+        await message.answer("Некорректный номер задачи. Попробуйте еще раз.")
+    await state.clear()
 
 
 async def main() -> None:
@@ -113,5 +140,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", stream=sys.stdout)
     asyncio.run(main())
